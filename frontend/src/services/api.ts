@@ -56,6 +56,7 @@ export const authApi = {
   registerClient: (data: unknown) => api.post<AuthResponse>('/api/auth/register/client', data),
   registerProvider: (data: unknown) => api.post<AuthResponse>('/api/auth/register/provider', data),
   login: (data: unknown) => api.post<AuthResponse>('/api/auth/login', data),
+  loginClient: (email: string, password: string) => api.post<AuthResponse>('/api/auth/login', { email, password }),
   logout: (refreshToken: string) => api.post('/api/auth/logout', { refreshToken }),
   getProfile: () => api.get('/api/auth/profile'),
   updateProfile: (data: unknown) => api.put('/api/auth/profile', data),
@@ -64,6 +65,10 @@ export const authApi = {
 export const catalogApi = {
   getCategories: () => api.get('/api/catalog/categories'),
   search: (params: Record<string, unknown>) => api.get('/api/catalog/search', { params }),
+  searchNearby: (params: { lat: number; lng: number; category?: number; radius?: number; limit?: number }) =>
+    api.get('/api/catalog/search', { params: { latitude: params.lat, longitude: params.lng, categoryId: params.category, radiusKm: params.radius, pageSize: params.limit } }),
+  estimatePrice: (categoryId: number) =>
+    api.get(`/api/catalog/pricing/${categoryId}`),
   getOffer: (id: string) => api.get(`/api/catalog/offers/${id}`),
   createOffer: (data: unknown) => api.post('/api/catalog/offers', data),
   getMyOffers: () => api.get('/api/catalog/offers/mine'),
@@ -74,6 +79,7 @@ export const catalogApi = {
 export const bookingApi = {
   create: (data: unknown) => api.post('/api/bookings', data),
   getById: (id: string) => api.get(`/api/bookings/${id}`),
+  getMyBookings: (status?: string) => api.get('/api/bookings/my/client', { params: { status } }),
   getMyClientBookings: (status?: string) => api.get('/api/bookings/my/client', { params: { status } }),
   getMyProviderBookings: (status?: string) => api.get('/api/bookings/my/provider', { params: { status } }),
   getNearbyRequests: (lat: number, lng: number) => api.get('/api/bookings/nearby-requests', { params: { lat, lng } }),

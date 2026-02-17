@@ -1,6 +1,7 @@
-using Identity.Service.Data;
-using Identity.Service.Middleware;
-using Identity.Service.Services;
+using Booking.Service.Data;
+using Booking.Service.Hubs;
+using Booking.Service.Middleware;
+using Booking.Service.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -33,13 +34,28 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateLifetime = true,
             ClockSkew = TimeSpan.Zero
         };
+
+        // SignalR token via query string
+        opt.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+                var path = context.HttpContext.Request.Path;
+                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+                    context.Token = accessToken;
+                return Task.CompletedTask;
+            }
+        };
     });
 
 builder.Services.AddAuthorization();
 
+// ─── SignalR ──────────────────────────────────────────────────
+builder.Services.AddSignalR();
+
 // ─── Services ─────────────────────────────────────────────────
-builder.Services.AddScoped<IAuthService, AuthService>();
-builder.Services.AddScoped<IJwtService, JwtService>();
+builder.Services.AddScoped<IBookingService, BookingService>();
 
 // ─── Controllers + Swagger ────────────────────────────────────
 builder.Services.AddControllers();
@@ -48,9 +64,9 @@ builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo
     {
-        Title = "7OUMA - Identity Service",
+        Title = "7OUMA - Booking Service",
         Version = "v1",
-        Description = "Authentification et gestion des utilisateurs"
+        Description = "Réservations et suivi en temps réel"
     });
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
@@ -81,12 +97,13 @@ using (var scope = app.Services.CreateScope())
 
 // ─── Middleware pipeline ──────────────────────────────────────
 app.UseSwagger();
-app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Identity v1"));
+app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Booking v1"));
 app.UseMiddleware<ExceptionMiddleware>();
 app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
-app.MapGet("/health", () => Results.Ok(new { status = "healthy", service = "identity" }));
+app.MapHub<TrackingHub>("/hubs/tracking");
+app.MapGet("/health", () => Results.Ok(new { status = "healthy", service = "booking" }));
 
 app.Run();

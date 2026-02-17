@@ -1,6 +1,6 @@
-using Identity.Service.Data;
-using Identity.Service.Middleware;
-using Identity.Service.Services;
+using Catalog.Service.Data;
+using Catalog.Service.Middleware;
+using Catalog.Service.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -38,8 +38,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization();
 
 // ─── Services ─────────────────────────────────────────────────
-builder.Services.AddScoped<IAuthService, AuthService>();
-builder.Services.AddScoped<IJwtService, JwtService>();
+builder.Services.AddScoped<ICatalogService, CatalogService>();
 
 // ─── Controllers + Swagger ────────────────────────────────────
 builder.Services.AddControllers();
@@ -48,9 +47,9 @@ builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo
     {
-        Title = "7OUMA - Identity Service",
+        Title = "7OUMA - Catalog Service",
         Version = "v1",
-        Description = "Authentification et gestion des utilisateurs"
+        Description = "Catalogue de services et recherche géolocalisée"
     });
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
@@ -81,12 +80,12 @@ using (var scope = app.Services.CreateScope())
 
 // ─── Middleware pipeline ──────────────────────────────────────
 app.UseSwagger();
-app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Identity v1"));
+app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Catalog v1"));
 app.UseMiddleware<ExceptionMiddleware>();
 app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
-app.MapGet("/health", () => Results.Ok(new { status = "healthy", service = "identity" }));
+app.MapGet("/health", () => Results.Ok(new { status = "healthy", service = "catalog" }));
 
 app.Run();
