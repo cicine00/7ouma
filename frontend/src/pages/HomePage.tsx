@@ -73,7 +73,7 @@ export default function HomePage() {
             <MapPin className="w-5 h-5 text-blue-200 flex-shrink-0" />
             {userLocation ? (
               <div>
-                <p className="text-sm font-medium">{user?.district || 'Votre quartier'}</p>
+                <p className="text-sm font-medium">{user?.quarter || 'Votre quartier'}</p>
                 <p className="text-xs text-blue-300">Prestataires dans un rayon de 5km</p>
               </div>
             ) : (

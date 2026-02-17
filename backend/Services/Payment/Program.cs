@@ -1,10 +1,10 @@
-using Identity.Service.Data;
-using Identity.Service.Middleware;
-using Identity.Service.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Payment.Service.Data;
+using Payment.Service.Middleware;
+using Payment.Service.Services;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -12,10 +12,6 @@ var builder = WebApplication.CreateBuilder(args);
 // ─── Database ─────────────────────────────────────────────────
 builder.Services.AddDbContext<AppDbContext>(opt =>
     opt.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
-
-// ─── Redis ────────────────────────────────────────────────────
-builder.Services.AddStackExchangeRedisCache(opt =>
-    opt.Configuration = builder.Configuration["Redis:Connection"]);
 
 // ─── Auth JWT ─────────────────────────────────────────────────
 var jwtSecret = builder.Configuration["Jwt:Secret"]!;
@@ -38,8 +34,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization();
 
 // ─── Services ─────────────────────────────────────────────────
-builder.Services.AddScoped<IAuthService, AuthService>();
-builder.Services.AddScoped<IJwtService, JwtService>();
+builder.Services.AddScoped<IPaymentService, PaymentService>();
 
 // ─── Controllers + Swagger ────────────────────────────────────
 builder.Services.AddControllers();
@@ -48,9 +43,9 @@ builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo
     {
-        Title = "7OUMA - Identity Service",
+        Title = "7OUMA - Payment Service",
         Version = "v1",
-        Description = "Authentification et gestion des utilisateurs"
+        Description = "Paiements et portefeuille prestataire"
     });
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
@@ -81,12 +76,12 @@ using (var scope = app.Services.CreateScope())
 
 // ─── Middleware pipeline ──────────────────────────────────────
 app.UseSwagger();
-app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Identity v1"));
+app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Payment v1"));
 app.UseMiddleware<ExceptionMiddleware>();
 app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
-app.MapGet("/health", () => Results.Ok(new { status = "healthy", service = "identity" }));
+app.MapGet("/health", () => Results.Ok(new { status = "healthy", service = "payment" }));
 
 app.Run();

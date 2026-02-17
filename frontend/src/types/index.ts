@@ -24,6 +24,22 @@ export interface AuthResponse {
   user: User
 }
 
+// ─── Service Categories ──────────────────────────────────────
+export type ServiceCategory = number
+
+export const CATEGORY_META: Record<number, { icon: string; label: string }> = {
+  1: { icon: '🔧', label: 'Plomberie' },
+  2: { icon: '⚡', label: 'Électricité' },
+  3: { icon: '🧹', label: 'Ménage' },
+  4: { icon: '🎨', label: 'Peinture' },
+  5: { icon: '🔑', label: 'Serrurerie' },
+  6: { icon: '❄️', label: 'Climatisation' },
+  7: { icon: '🚚', label: 'Déménagement' },
+  8: { icon: '🌿', label: 'Jardinage' },
+  9: { icon: '🚗', label: 'Réparation Auto' },
+  10: { icon: '📚', label: 'Cours Particuliers' },
+}
+
 // ─── Catalog ──────────────────────────────────────────────────
 export interface Category {
   id: number
@@ -112,6 +128,35 @@ export interface ProviderLocation {
   longitude: number
   timestamp: string
 }
+
+// ─── Status labels ───────────────────────────────────────────
+export const BOOKING_STATUS_LABEL: Record<string, { label: string; color: string }> = {
+  Pending:    { label: 'En attente', color: 'yellow' },
+  Accepted:   { label: 'Accepté', color: 'blue' },
+  InProgress: { label: 'En cours', color: 'indigo' },
+  Completed:  { label: 'Terminé', color: 'green' },
+  Cancelled:  { label: 'Annulé', color: 'red' },
+  Disputed:   { label: 'Litige', color: 'orange' },
+}
+
+// ─── Search types ────────────────────────────────────────────
+export interface ProviderSearchResult {
+  id: string
+  fullName: string
+  businessName: string
+  avatarUrl?: string
+  isVerified: boolean
+  isPremium: boolean
+  rating: number
+  totalReviews: number
+  completedJobs: number
+  distanceKm: number
+  minPrice?: number
+  categories: number[]
+}
+
+// ─── Type alias ──────────────────────────────────────────────
+export type UserProfile = User
 
 // ─── API Generic ──────────────────────────────────────────────
 export interface ApiError {
