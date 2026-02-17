@@ -1,0 +1,176 @@
+version: '3.9'
+
+networks:
+  7ouma-network:
+    driver: bridge
+
+volumes:
+  postgres_identity:
+  postgres_catalog:
+  postgres_booking:
+  postgres_payment:
+  redis_data:
+
+services:
+
+  # ── INFRASTRUCTURE ──────────────────────────────────────────
+  postgres-identity:
+    image: postgis/postgis:16-3.4
+    container_name: 7ouma-postgres-identity
+    environment:
+      POSTGRES_DB: identity_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 7ouma_pass
+    volumes: [postgres_identity:/var/lib/postgresql/data]
+    ports: ["5433:5432"]
+    networks: [7ouma-network]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      retries: 5
+
+  postgres-catalog:
+    image: postgis/postgis:16-3.4
+    container_name: 7ouma-postgres-catalog
+    environment:
+      POSTGRES_DB: catalog_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 7ouma_pass
+    volumes: [postgres_catalog:/var/lib/postgresql/data]
+    ports: ["5434:5432"]
+    networks: [7ouma-network]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      retries: 5
+
+  postgres-booking:
+    image: postgis/postgis:16-3.4
+    container_name: 7ouma-postgres-booking
+    environment:
+      POSTGRES_DB: booking_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 7ouma_pass
+    volumes: [postgres_booking:/var/lib/postgresql/data]
+    ports: ["5435:5432"]
+    networks: [7ouma-network]
+
+  postgres-payment:
+    image: postgis/postgis:16-3.4
+    container_name: 7ouma-postgres-payment
+    environment:
+      POSTGRES_DB: payment_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 7ouma_pass
+    volumes: [postgres_payment:/var/lib/postgresql/data]
+    ports: ["5436:5432"]
+    networks: [7ouma-network]
+
+  redis:
+    image: redis:7-alpine
+    container_name: 7ouma-redis
+    command: redis-server --appendonly yes
+    volumes: [redis_data:/data]
+    ports: ["6379:6379"]
+    networks: [7ouma-network]
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: 7ouma-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: 7ouma_pass
+    ports: ["5672:5672", "15672:15672"]
+    networks: [7ouma-network]
+
+  # ── BACKEND SERVICES ─────────────────────────────────────────
+  identity-service:
+    build:
+      context: ./backend/Services/Identity
+      dockerfile: Dockerfile
+    container_name: 7ouma-identity
+    ports: ["5001:8080"]
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: "Host=postgres-identity;Port=5432;Database=identity_db;Username=postgres;Password=7ouma_pass"
+      Jwt__Secret: "7ouma_super_secret_key_change_in_prod_32chars!"
+      Jwt__Issuer: "7ouma-identity"
+      Jwt__Audience: "7ouma-api"
+      Redis__Connection: "redis:6379"
+    depends_on:
+      postgres-identity:
+        condition: service_healthy
+    networks: [7ouma-network]
+
+  catalog-service:
+    build:
+      context: ./backend/Services/Catalog
+      dockerfile: Dockerfile
+    container_name: 7ouma-catalog
+    ports: ["5002:8080"]
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: "Host=postgres-catalog;Port=5432;Database=catalog_db;Username=postgres;Password=7ouma_pass"
+      Jwt__Secret: "7ouma_super_secret_key_change_in_prod_32chars!"
+      Jwt__Issuer: "7ouma-identity"
+      Jwt__Audience: "7ouma-api"
+      Redis__Connection: "redis:6379"
+    depends_on:
+      postgres-catalog:
+        condition: service_healthy
+    networks: [7ouma-network]
+
+  booking-service:
+    build:
+      context: ./backend/Services/Booking
+      dockerfile: Dockerfile
+    container_name: 7ouma-booking
+    ports: ["5003:8080"]
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: "Host=postgres-booking;Port=5432;Database=booking_db;Username=postgres;Password=7ouma_pass"
+      Jwt__Secret: "7ouma_super_secret_key_change_in_prod_32chars!"
+      RabbitMQ__Host: "rabbitmq"
+      RabbitMQ__User: "admin"
+      RabbitMQ__Pass: "7ouma_pass"
+      Redis__Connection: "redis:6379"
+    networks: [7ouma-network]
+
+  payment-service:
+    build:
+      context: ./backend/Services/Payment
+      dockerfile: Dockerfile
+    container_name: 7ouma-payment
+    ports: ["5004:8080"]
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: "Host=postgres-payment;Port=5432;Database=payment_db;Username=postgres;Password=7ouma_pass"
+      Jwt__Secret: "7ouma_super_secret_key_change_in_prod_32chars!"
+      Stripe__SecretKey: "sk_test_REPLACE_WITH_YOUR_KEY"
+      Commission__Rate: "0.05"
+    networks: [7ouma-network]
+
+  api-gateway:
+    build:
+      context: ./backend/ApiGateway
+      dockerfile: Dockerfile
+    container_name: 7ouma-gateway
+    ports: ["5000:8080"]
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+    depends_on:
+      - identity-service
+      - catalog-service
+      - booking-service
+      - payment-service
+    networks: [7ouma-network]
+
+  # ── FRONTEND ─────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: 7ouma-frontend
+    ports: ["3000:80"]
+    depends_on: [api-gateway]
+    networks: [7ouma-network]
